@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exquisite Pomodoro Clock (Dark Mode)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Tone.js CDN for sound generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <style>
+        /* Base styles for body and container */
+        body {
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            /* Initial background for work mode - Darker, subtle gradient */
+            background: linear-gradient(135deg, #1a202c, #2d3748, #1a202c); /* Dark blue-gray gradient */
+            transition: background 0.8s ease-in-out; /* Smooth transition for background changes */
+        }
+        .container {
+            max-width: 500px;
+            width: 90%;
+            background-color: #2d3748; /* Darker container background */
+            /* Enhanced, layered box shadow for depth */
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4), 0 5px 15px rgba(0, 0, 0, 0.2); /* Darker shadows */
+            border-radius: 2.5rem; /* More rounded corners */
+            padding: 2.5rem; /* Increased padding */
+            text-align: center;
+            transition: background-color 0.8s ease-in-out, box-shadow 0.3s ease-in-out;
+            /* Optional: Frosted glass effect (might not be supported on all browsers) */
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.05); /* Subtle light border for contrast */
+        }
+
+        /* Time Display */
+        .time-display {
+            font-size: 6.5rem; /* Larger font size */
+            font-weight: 800; /* Bolder font weight */
+            color: #e2e8f0; /* Light text color for dark mode */
+            margin-bottom: 2.5rem; /* Increased margin */
+            letter-spacing: 0.05em; /* Slightly tighter letter spacing */
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.1), 0 0 5px rgba(255, 255, 255, 0.05); /* Subtle glow and shadow */
+            transition: color 0.3s ease;
+        }
+
+        /* Mode Buttons */
+        .mode-buttons button {
+            padding: 0.9rem 2rem; /* Adjusted padding */
+            border-radius: 9999px; /* Pill shape */
+            font-weight: 700; /* Bolder text */
+            margin: 0 0.6rem 2rem; /* Adjusted margin */
+            transition: all 0.3s ease; /* Smooth transitions for all properties */
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2); /* Softer shadow */
+            background-color: #4a5568; /* Dark gray default */
+            color: #cbd5e1; /* Light text for contrast */
+            border: none;
+            cursor: pointer;
+            outline: none;
+        }
+        .mode-buttons button.active {
+            background-color: #818cf8; /* Vibrant indigo for active state */
+            color: white;
+            box-shadow: 0 6px 15px rgba(129, 140, 248, 0.4); /* Stronger, colored shadow */
+            transform: translateY(-2px); /* Slight lift */
+        }
+        .mode-buttons button:not(.active):hover {
+            background-color: #646c82; /* Slightly lighter dark gray on hover */
+            transform: translateY(-2px); /* Slight lift on hover */
+            box-shadow: 0 5px 12px rgba(0, 0, 0, 0.3);
+        }
+        .mode-buttons button:active {
+            transform: translateY(0); /* Press effect */
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Control Buttons (Start, Pause, Reset, Skip) */
+        .control-buttons button {
+            padding: 1.2rem 3.5rem; /* Larger padding */
+            border-radius: 9999px; /* Pill shape */
+            font-weight: 800; /* Extra bold */
+            font-size: 1.5rem; /* Larger font size */
+            margin: 0 0.8rem; /* Adjusted margin */
+            transition: all 0.3s ease; /* Smooth transitions */
+            /* Vibrant gradient for main buttons */
+            background: linear-gradient(145deg, #818cf8, #a78bfa); /* Indigo to purple gradient */
+            color: white;
+            border: none;
+            cursor: pointer;
+            outline: none;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3); /* Deeper shadow */
+        }
+        .control-buttons button:hover {
+            transform: translateY(-4px) scale(1.02); /* More pronounced lift and slight scale */
+            box-shadow: 0 12px 25px rgba(0, 0, 0, 0.4); /* Even deeper shadow on hover */
+        }
+        .control-buttons button:active {
+            transform: translateY(0) scale(0.98); /* Press effect */
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+        }
+        .control-buttons button:disabled {
+            opacity: 0.7; /* Slightly less opaque */
+            cursor: not-allowed;
+            background: linear-gradient(145deg, #525f7f, #4a5568); /* Muted dark gray gradient for disabled */
+            box-shadow: none;
+            transform: none; /* No transform when disabled */
+        }
+
+        /* Sound Selection Dropdown */
+        .sound-selection {
+            margin-top: 3rem; /* Increased top margin */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .sound-selection label {
+            font-weight: 600;
+            color: #cbd5e1; /* Light text for dark mode */
+            margin-bottom: 0.75rem; /* Increased margin */
+            font-size: 1.1rem;
+        }
+        .sound-selection select {
+            padding: 0.85rem 1.2rem; /* Adjusted padding */
+            border-radius: 1rem; /* More rounded */
+            border: 1px solid #4a5568; /* Darker border color */
+            background-color: #2d3748; /* Dark background */
+            color: #e2e8f0; /* Light text */
+            font-size: 1.05rem;
+            width: 100%;
+            max-width: 280px; /* Slightly wider */
+            appearance: none; /* Remove default arrow */
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='white'%3E%3Cpath fill-rule='evenodd' d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z' clip-rule='evenodd' /%3E%3C/svg%3E"); /* White arrow for dark mode */
+            background-repeat: no-repeat;
+            background-position: right 1rem center; /* Adjusted arrow position */
+            background-size: 1.6em 1.6em; /* Slightly larger arrow */
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .sound-selection select:focus {
+            outline: none;
+            border-color: #818cf8; /* Vibrant indigo on focus */
+            box-shadow: 0 0 0 4px rgba(129, 140, 248, 0.3); /* Stronger focus ring */
+            background-color: #3a455a; /* Slightly lighter dark background on focus */
+        }
+
+        /* Message Box */
+        .message-box {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(26, 32, 44, 0.95); /* Very dark, prominent overlay */
+            color: white;
+            padding: 30px; /* More padding */
+            border-radius: 15px; /* More rounded */
+            z-index: 1000;
+            display: none;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); /* Deeper shadow */
+            font-size: 1.2rem;
+        }
+        .message-box button {
+            background-color: #818cf8; /* Matches main button color */
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 20px;
+            font-weight: 600;
+            transition: background-color 0.2s ease, transform 0.2s ease;
+        }
+        .message-box button:hover {
+            background-color: #6366f1; /* Slightly darker on hover */
+            transform: translateY(-1px);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="mode-buttons flex justify-center">
+            <button id="work-mode-btn" class="active">Work</button>
+            <button id="short-break-mode-btn">Short Break</button>
+            <button id="long-break-mode-btn">Long Break</button>
+        </div>
+
+        <div id="time" class="time-display">25:00</div>
+
+        <div class="control-buttons flex justify-center">
+            <button id="start-btn">Start</button>
+            <button id="pause-btn" disabled>Pause</button>
+            <button id="reset-btn" disabled>Reset</button>
+            <button id="skip-btn" disabled>Skip</button>
+        </div>
+
+        <div class="sound-selection">
+            <label for="sound-select">Choose End Sound:</label>
+            <select id="sound-select">
+                <option value="chime">Chime</option>
+                <option value="bell">Bell</option>
+                <option value="soft_pad">Soft Pad</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Message Box for alerts -->
+    <div id="message-box" class="message-box">
+        <p id="message-text"></p>
+        <button id="message-box-ok-btn">OK</button>
+    </div>
+
+    <script>
+        // Global variables for Firebase (will be populated by the Canvas environment)
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // Message Box functions (replacing alert/confirm)
+        function showMessageBox(message, onOk = null) {
+            const msgBox = document.getElementById('message-box');
+            const msgText = document.getElementById('message-text');
+            const okBtn = document.getElementById('message-box-ok-btn');
+
+            msgText.textContent = message;
+            msgBox.style.display = 'block';
+
+            okBtn.onclick = () => {
+                msgBox.style.display = 'none';
+                if (onOk) onOk();
+            };
+        }
+
+        // --- Pomodoro Clock Logic ---
+        const timeDisplay = document.getElementById('time');
+        const workModeBtn = document.getElementById('work-mode-btn');
+        const shortBreakModeBtn = document.getElementById('short-break-mode-btn');
+        const longBreakModeBtn = document.getElementById('long-break-mode-btn');
+        const startBtn = document.getElementById('start-btn');
+        const pauseBtn = document.getElementById('pause-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const skipBtn = document.getElementById('skip-btn');
+        const soundSelect = document.getElementById('sound-select');
+        const container = document.querySelector('.container');
+        const body = document.body;
+
+        let timer;
+        let isRunning = false;
+        let totalSeconds;
+        let currentMode = 'work'; // 'work', 'shortBreak', 'longBreak'
+        let pomodoroCount = 0; // To track cycles for long break
+
+        const modes = {
+            work: 25 * 60,
+            shortBreak: 5 * 60,
+            longBreak: 15 * 60
+        };
+
+        // Initialize Tone.js Synths for sounds
+        let chimeSynth, bellSynth, softPadSynth;
+
+        window.onload = async function() {
+            // Initialize Tone.js context
+            await Tone.start();
+            console.log("AudioContext is running");
+
+            // Chime sound: Simple sine wave with a short decay
+            chimeSynth = new Tone.Synth({
+                oscillator: { type: "sine" },
+                envelope: {
+                    attack: 0.005,
+                    decay: 0.2,
+                    sustain: 0.05,
+                    release: 0.5
+                }
+            }).toDestination();
+
+            // Bell sound: FM synth for a metallic tone
+            bellSynth = new Tone.FMSynth({
+                harmonicity: 3.01,
+                modulationIndex: 14,
+                oscillator: { type: "sine" },
+                envelope: {
+                    attack: 0.01,
+                    decay: 0.2,
+                    sustain: 0.01,
+                    release: 1.2
+                },
+                modulation: { type: "sine" },
+                modulationEnvelope: {
+                    attack: 0.005,
+                    decay: 0.2,
+                    sustain: 0.0,
+                    release: 0.05
+                }
+            }).toDestination();
+
+            // Soft Pad sound: PolySynth with a warm, sustained tone
+            softPadSynth = new Tone.PolySynth(Tone.AMSynth, {
+                oscillator: { type: "triangle" },
+                envelope: {
+                    attack: 2,
+                    decay: 1,
+                    sustain: 0.5,
+                    release: 5
+                },
+                harmonicity: 1.5
+            }).toDestination();
+
+            // Set initial mode and time
+            setMode('work');
+        };
+
+        function playSound(soundType) {
+            if (soundType === 'chime') {
+                chimeSynth.triggerAttackRelease("C5", "8n");
+            } else if (soundType === 'bell') {
+                bellSynth.triggerAttackRelease("G4", "4n");
+            } else if (soundType === 'soft_pad') {
+                softPadSynth.triggerAttackRelease(["C4", "E4", "G4"], "4n");
+            }
+        }
+
+        function updateDisplay() {
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            timeDisplay.textContent = `${minutes < 10 ? '0' : ''}${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+        }
+
+        function setMode(mode) {
+            currentMode = mode;
+            totalSeconds = modes[mode];
+            updateDisplay();
+            updateModeButtons();
+            updateBackgroundAndContainer();
+            disableControlButtons(false, true, true, true); // Enable start, disable others
+            if (isRunning) { // If timer was running, pause it and reset
+                pauseTimer();
+                resetTimer();
+            }
+        }
+
+        function updateModeButtons() {
+            workModeBtn.classList.remove('active');
+            shortBreakModeBtn.classList.remove('active');
+            longBreakModeBtn.classList.remove('active');
+
+            if (currentMode === 'work') {
+                workModeBtn.classList.add('active');
+            } else if (currentMode === 'shortBreak') {
+                shortBreakModeBtn.classList.add('active');
+            } else if (currentMode === 'longBreak') {
+                longBreakModeBtn.classList.add('active');
+            }
+        }
+
+        function updateBackgroundAndContainer() {
+            // Remove all specific background classes first to ensure clean transitions
+            body.style.background = ''; // Clear inline style
+            container.classList.remove('bg-white', 'bg-green-50', 'bg-purple-50'); // Remove old container colors
+
+            if (currentMode === 'work') {
+                body.style.background = 'linear-gradient(135deg, #1a202c, #2d3748, #1a202c)'; /* Dark blue-gray gradient */
+                container.style.backgroundColor = '#2d3748'; /* Dark container for work */
+            } else if (currentMode === 'shortBreak') {
+                body.style.background = 'linear-gradient(135deg, #1f2937, #334155, #1f2937)'; /* Darker green-ish gradient */
+                container.style.backgroundColor = '#334155'; /* Darker green-ish container */
+            } else if (currentMode === 'longBreak') {
+                body.style.background = 'linear-gradient(135deg, #2c203b, #3f2d4f, #2c203b)'; /* Darker purple-ish gradient */
+                container.style.backgroundColor = '#3f2d4f'; /* Darker purple-ish container */
+            }
+        }
+
+        function disableControlButtons(start, pause, reset, skip) {
+            startBtn.disabled = start;
+            pauseBtn.disabled = pause;
+            resetBtn.disabled = reset;
+            skipBtn.disabled = skip;
+        }
+
+        function startTimer() {
+            if (isRunning) return;
+            isRunning = true;
+            disableControlButtons(true, false, false, false); // Disable start, enable others
+
+            timer = setInterval(() => {
+                totalSeconds--;
+                updateDisplay();
+
+                if (totalSeconds <= 0) {
+                    clearInterval(timer);
+                    isRunning = false;
+                    playSound(soundSelect.value); // Play selected sound
+
+                    if (currentMode === 'work') {
+                        pomodoroCount++;
+                        showMessageBox(`Work session finished! You've completed ${pomodoroCount} Pomodoros.`, () => {
+                            if (pomodoroCount % 4 === 0) {
+                                setMode('longBreak');
+                            } else {
+                                setMode('shortBreak');
+                            }
+                            disableControlButtons(false, true, true, true); // Enable start, disable others
+                        });
+                    } else {
+                        showMessageBox(`Break finished! Time to work again.`, () => {
+                            setMode('work');
+                            disableControlButtons(false, true, true, true); // Enable start, disable others
+                        });
+                    }
+                }
+            }, 1000);
+        }
+
+        function pauseTimer() {
+            clearInterval(timer);
+            isRunning = false;
+            disableControlButtons(false, true, false, false); // Enable start, disable pause
+        }
+
+        function resetTimer() {
+            clearInterval(timer);
+            isRunning = false;
+            setMode(currentMode); // Reset to current mode's initial time
+            disableControlButtons(false, true, true, true); // Enable start, disable others
+        }
+
+        function skipTimer() {
+            clearInterval(timer);
+            isRunning = false;
+            playSound(soundSelect.value); // Play selected sound
+
+            if (currentMode === 'work') {
+                pomodoroCount++;
+                showMessageBox(`Work session skipped! You've completed ${pomodoroCount} Pomodoros.`, () => {
+                    if (pomodoroCount % 4 === 0) {
+                        setMode('longBreak');
+                    } else {
+                        setMode('shortBreak');
+                    }
+                    disableControlButtons(false, true, true, true);
+                });
+            } else {
+                showMessageBox(`Break skipped! Time to work again.`, () => {
+                    setMode('work');
+                    disableControlButtons(false, true, true, true);
+                });
+            }
+        }
+
+        // Event Listeners
+        startBtn.addEventListener('click', startTimer);
+        pauseBtn.addEventListener('click', pauseTimer);
+        resetBtn.addEventListener('click', resetTimer);
+        skipBtn.addEventListener('click', skipTimer);
+
+        workModeBtn.addEventListener('click', () => setMode('work'));
+        shortBreakModeBtn.addEventListener('click', () => setMode('shortBreak'));
+        longBreakModeBtn.addEventListener('click', () => setMode('longBreak'));
+
+        // Initial setup
+        setMode('work');
+    </script>
+</body>
+</html>
